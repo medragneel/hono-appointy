@@ -2,29 +2,19 @@ import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { bookingSchema } from "../utils/zodSchema";
 import { checkBookingConflict } from "../utils/middlewares";
+import { createNewBooking, getAll, getBookingById, removeBooking, updateBooking } from "../server/db/models/appointement";
 
 
 export const booking = new Hono().basePath("/booking")
 
 
-export const bookings = [
-    {
-        "id": 1,
-        "name": "John Doe",
-        "date": "2024-09-24",
-        "startTime": "09:00:00",
-        "endTime": "10:00:00",
-        "service": "Haircut"
-    }
-]
 
 
-booking.get("/", (c) => c.json(bookings))
-booking.get("/:id", (c) => {
+booking.get("/", async (c) => c.json(await getAll()))
+booking.get("/:id", async (c) => {
     const id = Number.parseInt(c.req.param().id)
-    const booking = bookings.find((b) => b.id === id)
-    console.log(booking)
-    if (booking === undefined) {
+    const booking = getBookingById(id)
+    if (!booking) {
         return c.json({ error: 'booking not found' }, 404)
     }
     return c.json({ "booking": booking })
@@ -35,18 +25,29 @@ booking.post("/", checkBookingConflict, zValidator('json', bookingSchema, (resul
     }
 }),
     async (c) => {
-        const { name, date, startTime, endTime, service } = c.req.valid('json')
-        const booking = {
-            id: bookings.length + 1,
-            name,
-            date,
-            startTime,
-            endTime,
-            service
+        try {
+            const { name, date, startTime, endTime, service } = c.req.valid('json')
+            const bookings = await getAll()
+            const booking = {
+                id: bookings.length + 1,
+                name,
+                date,
+                startTime,
+                endTime,
+                service
 
+            }
+
+            if (!name || !date || !startTime || !endTime || !service) {
+                return c.json({ error: 'Missing required fields' }, 400)
+            }
+            await createNewBooking(booking)
+            return c.json({ message: "success" }, 201)
+
+        } catch (error) {
+            console.error('Error parsing request body:', error);
+            return c.json({ error: 'Invalid request' }, 400);
         }
-        bookings.push(booking)
-        return c.json({ message: "success" }, 201)
     })
 booking.put("/:id", checkBookingConflict, zValidator('json', bookingSchema, (result, c) => {
     if (!result.success) {
@@ -55,19 +56,22 @@ booking.put("/:id", checkBookingConflict, zValidator('json', bookingSchema, (res
 }),
     async (c) => {
         const bookingId = Number.parseInt(c.req.param().id)
-        const bookingIndex = bookings.findIndex((b) => b.id === bookingId)
-        console.log(bookingIndex)
-        if (bookingIndex === -1) return c.json({ error: "booking not found" }, 404)
+        const bookings = await getAll()
+        const existingBooking = getBookingById(bookingId)
+
+        if (!existingBooking) return c.json({ error: "booking not found" }, 404)
         const { name, date, startTime, endTime, service } = c.req.valid('json')
 
-        bookings[bookingIndex] = {
-            ...bookings[bookingIndex],
+        const bookingdata = {
+            ...bookings,
             name,
             date,
             startTime,
             endTime,
             service
         }
+        updateBooking(bookingdata, bookingId)
+        console.log('New appointment:', c.req.valid('json'))
 
 
         return c.json({ message: `booking ${bookingId} updated successfully` })
@@ -78,10 +82,11 @@ booking.put("/:id", checkBookingConflict, zValidator('json', bookingSchema, (res
 
 booking.delete("/:id", (c) => {
     const bookingId = Number.parseInt(c.req.param().id)
-    const bookingIndex = bookings.findIndex((b) => b.id === bookingId)
-    if (bookingIndex === -1) return c.json({ error: "booking not found" }, 404)
+    const booking = getBookingById(bookingId)
+    if (!booking) return c.json({ error: "booking not found" }, 404)
 
-    bookings.splice(bookingIndex, 1)
+    removeBooking(bookingId)
+
 
     return c.json({ message: `booking ${bookingId} deleted` })
 })

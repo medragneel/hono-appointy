@@ -1,8 +1,9 @@
 import { Context, Next } from "hono"
-import { bookings } from "../routes/bookings"
 import { isOverlapping } from "./timeUtils"
+import { getAll } from "../server/db/models/appointement"
 
 export const checkBookingConflict = async (c: Context, next: Next) => {
+    const bookings = await getAll()
     console.log(await c.req.json())
     const { date, startTime, endTime } = await c.req.json()
     const bookingId = Number.parseInt(c.req.param().id)

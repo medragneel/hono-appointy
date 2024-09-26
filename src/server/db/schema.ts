@@ -12,7 +12,7 @@ const timestamps = {
 };
 
 export const appointements = sqliteTable("appointements", {
-    id: integer("id").primaryKey(),
+    id: integer("id").primaryKey({ autoIncrement: true }).unique(),
     name: text("name").default("test"),
     date: text("date").notNull(),
     startTime: text("startTime").notNull(),

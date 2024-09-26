@@ -10,4 +10,4 @@ export const db = drizzle(client)
 if (!db) {
     console.log("problem in db")
 }
-console.log(db)
+// console.log(db)
