@@ -27,9 +27,7 @@ booking.post("/", checkBookingConflict, zValidator('json', bookingSchema, (resul
     async (c) => {
         try {
             const { name, date, startTime, endTime, service } = c.req.valid('json')
-            const bookings = await getAll()
             const booking = {
-                id: bookings.length + 1,
                 name,
                 date,
                 startTime,
@@ -42,7 +40,7 @@ booking.post("/", checkBookingConflict, zValidator('json', bookingSchema, (resul
                 return c.json({ error: 'Missing required fields' }, 400)
             }
             await createNewBooking(booking)
-            return c.json({ message: "success" }, 201)
+            return c.json({ message: "success", booking: booking }, 201)
 
         } catch (error) {
             console.error('Error parsing request body:', error);
@@ -71,7 +69,7 @@ booking.put("/:id", checkBookingConflict, zValidator('json', bookingSchema, (res
             service
         }
         updateBooking(bookingdata, bookingId)
-        console.log('New appointment:', c.req.valid('json'))
+        console.log('appointment updated:', c.req.valid('json'))
 
 
         return c.json({ message: `booking ${bookingId} updated successfully` })
@@ -90,3 +88,4 @@ booking.delete("/:id", (c) => {
 
     return c.json({ message: `booking ${bookingId} deleted` })
 })
+
